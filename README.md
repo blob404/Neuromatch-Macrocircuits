@@ -1,0 +1,3 @@
+- Run setup.sh to install conda (micromamba) environment
+- 'micromamba activate nma2024' to enter the environment
+- Modify and run macrocircuits.py from command line as python script
