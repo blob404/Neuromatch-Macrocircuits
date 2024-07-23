@@ -1,0 +1,16 @@
+jax 0.4.26
+chex 0.1.86
+pytorch 2.3.1
+git
+imageio
+ffmpeg
+imageio-ffmpeg
+dm-acme[envs] 0.2.2
+dm-control >=1.0.16
+gym <=0.25.2
+pyyaml
+matplotlib
+pandas
+seaborn
+ipywidgets
+IPython
