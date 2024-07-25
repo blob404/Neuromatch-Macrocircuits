@@ -30,7 +30,7 @@ from torch import nn
 import tonic
 import tonic.torch
 
-from tonic.torch import models, normalizers
+from tonic.torch import agents, models, normalizers
 import torch
 
 from IPython.display import Image, display
@@ -38,6 +38,8 @@ import os
 from pathlib import Path
 
 import networkx as nx
+
+import optuna
 
 output_folder = 'output'
 if not os.path.exists(output_folder):
@@ -365,6 +367,9 @@ def train(
     environment=environment,
     test_environment=test_environment,
   )
+  # init env
+  trainer.environment.initialize(seed=seed)
+
   # Run some code before training.
   if before_training:
     exec(before_training)
@@ -375,6 +380,7 @@ def train(
   # Run some code after training.
   if after_training:
     exec(after_training)
+  return trainer
 
 """### Section 2.2 Training MLP model on swim task
 
@@ -1172,35 +1178,50 @@ def main():
     #   name = 'ncap_ppo',
     #   trainer = 'tonic.Trainer(steps=int(1e5),save_steps=int(5e4))')
     #
-    model_name = 'ncap_wind_0_0_0_d4pg'
+    paths = []
 
-    train('import tonic.torch',
-    'tonic.torch.agents.D4PG(model=d4pg_swimmer_model(n_joints=6,critic_sizes=(128,128)))',
-    'tonic.environments.ControlSuite("swimmer-swim", task_kwargs={"n_links": 7, "random": 0, "viscosity": 0, "wind": [0,0,0]})',
-        name = model_name,
-    trainer = 'tonic.Trainer(steps=int(1e5),save_steps=int(5e4))')
+    for n_joints in (6, 9, 12):
+        for viscosity in (0.0, 0.2, 0.4, 0.6, 0.8, 1.0):
+            model_name = f'model_n_joints_{n_joints}_viscosity_{viscosity}'
+
+            trainer = train('import tonic.torch',
+                    f'tonic.torch.agents.D4PG(model=d4pg_swimmer_model(n_joints={n_joints}, critic_sizes=(128,128)))',
+                    f'tonic.environments.ControlSuite("swimmer-swim", task_kwargs={{"n_links": {n_joints+1}, "random": 0, "viscosity": {viscosity}, "wind": [0,0,0]}})',
+                    name = model_name,
+            trainer = 'tonic.Trainer(steps=int(1e5), save_steps=int(5e4))')
+
+            paths.append(f'data/local/experiments/tonic/swimmer-swim/{model_name}')
+
 
     """Let's visualize the trained NCAP agent in the environment.
     """
 
-    # play_model('data/local/experiments/tonic/swimmer-swim/ncap_ppo')
-    #play_model('data/local/experiments/tonic/swimmer-swim/pretrained_ncap_ppo')
-    play_model(f'data/local/experiments/tonic/swimmer-swim/{model_name}')
-
+    for path in paths:
+        play_model(path)
     fig, ax = plt.subplots()
-
-    #Replace the paths with the path to models you trained to plot their performance.
-    paths = [
-        'data/local/experiments/tonic/swimmer-swim/pretrained_ncap_ppo',
-        'data/local/experiments/tonic/swimmer-swim/pretrained_mlp_ppo'
-    ]
-    plot_performance(paths, ax=ax, title='MLP v/s NCAP')
+    plot_performance(paths, ax=ax, title='d4pg different params')
     plt.tight_layout()
     plt.show()
 
-    draw_network('MLP', N=6)
+    # play_model('data/local/experiments/tonic/swimmer-swim/ncap_ppo')
+    #play_model('data/local/experiments/tonic/swimmer-swim/pretrained_ncap_ppo')
+    #play_model(f'data/local/experiments/tonic/swimmer-swim/{model_name}')
 
-    draw_network('NCAP', N=6, include_speed_control=True, include_turn_control=True)
+
+    #Replace the paths with the path to models you trained to plot their performance.
+    # paths = [
+    #     'data/local/experiments/tonic/swimmer-swim/pretrained_ncap_ppo',
+    #     'data/local/experiments/tonic/swimmer-swim/pretrained_mlp_ppo'
+    # ]
+    # plot_performance(paths, ax=ax, title='MLP v/s NCAP')
+    # plt.tight_layout()
+    # plt.show()
+
+    # draw_network('MLP', N=6)
+
+    # draw_network('NCAP', N=6, include_speed_control=True, include_turn_control=True)
+
+
 
 if __name__ == '__main__':
     main()
